@@ -64,14 +64,14 @@ export async function generateAiFeedback({
   const feedbackText = result.text.trim();
   if (!feedbackText) return;
 
-  const feedbackJson = JSON.stringify({ manual: feedbackText });
+  const feedbackJson = JSON.stringify({ ai_hints: feedbackText });
 
   await execute(
-    'UPDATE grading_jobs SET feedback = $feedback::jsonb WHERE id = $grading_job_id',
+    'UPDATE grading_jobs SET feedback = COALESCE(feedback, \'{}\'::jsonb) || $feedback::jsonb WHERE id = $grading_job_id',
     { feedback: feedbackJson, grading_job_id },
   );
   await execute(
-    'UPDATE submissions SET feedback = $feedback::jsonb WHERE id = $submission_id',
+    'UPDATE submissions SET feedback = COALESCE(feedback, \'{}\'::jsonb) || $feedback::jsonb WHERE id = $submission_id',
     { feedback: feedbackJson, submission_id: submission.id },
   );
 }

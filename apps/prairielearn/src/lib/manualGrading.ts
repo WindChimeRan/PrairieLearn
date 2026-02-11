@@ -218,6 +218,11 @@ export async function populateManualGradingData(submission: Record<string, any>)
   if (submission.feedback?.manual) {
     submission.feedback_manual_html = markdownToHtml(submission.feedback?.manual?.toString() || '');
   }
+  if (submission.feedback?.ai_hints) {
+    submission.feedback_ai_hints_html = markdownToHtml(
+      submission.feedback?.ai_hints?.toString() || '',
+    );
+  }
 }
 
 /**
