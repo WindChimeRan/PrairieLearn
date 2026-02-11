@@ -123,6 +123,7 @@ export async function generatePrompt({
             "You must grade the student's response by using the rubric and returning an object of rubric descriptions and whether or not that rubric item applies to the student's response.",
             'If no rubric items apply, do not select any.',
             'You must include an explanation on why you make these choices.',
+            'Include brief feedback for the student on their submission. Address the student as "you". Use an empty string if the student\'s response is entirely correct.',
             'Follow any special instructions given by the instructor in the question.',
           ],
         ]),
