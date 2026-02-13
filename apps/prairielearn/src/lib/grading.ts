@@ -4,11 +4,9 @@ import * as unzipper from 'unzipper';
 import { z } from 'zod';
 
 import * as error from '@prairielearn/error';
-import { logger } from '@prairielearn/logger';
 import * as sqldb from '@prairielearn/postgres';
 import { IdSchema, IntervalSchema } from '@prairielearn/zod';
 
-import { generateAiFeedback } from '../ee/lib/ai-grading/ai-feedback.js';
 import { updateCourseInstanceUsagesForSubmission } from '../models/course-instance-usages.js';
 import { insertGradingJob, updateGradingJobAfterGrading } from '../models/grading-job.js';
 import { lockVariant } from '../models/variant.js';
@@ -28,7 +26,6 @@ import {
   VariantSchema,
 } from './db-types.js';
 import * as externalGrader from './externalGrader.js';
-import { features } from './features/index.js';
 import { idsEqual } from './id.js';
 import { writeCourseIssues } from './issues.js';
 import * as ltiOutcomes from './ltiOutcomes.js';
@@ -468,22 +465,8 @@ export async function gradeVariant({
       await ltiOutcomes.updateScore(assessment_instance_id);
     }
 
-    // Generate AI feedback asynchronously (don't block the response)
-    const aiGradingEnabled = await features.enabled('ai-grading', {
-      institution_id: variant_course.institution_id,
-      course_id: variant_course.id,
-    });
-    if (aiGradingEnabled) {
-      generateAiFeedback({
-        grading_job_id: grading_job.id,
-        submission,
-        variant,
-        question,
-        score: data.score,
-      }).catch((err) => {
-        logger.error('Failed to generate AI feedback', err);
-      });
-    }
+    // AI feedback is now generated client-side via the streaming endpoint
+    // in ee/routers/ai-hints-stream.ts, so we no longer fire-and-forget here.
   }
 }
 

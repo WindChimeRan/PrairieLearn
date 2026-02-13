@@ -1458,6 +1458,11 @@ export async function initExpress(): Promise<Express> {
   );
 
   app.use(
+    '/pl/course_instance/:course_instance_id(\\d+)/instance_question/:instance_question_id(\\d+)/ai_hints',
+    (await import('./ee/routers/ai-hints-stream.js')).default,
+  );
+
+  app.use(
     '/pl/course_instance/:course_instance_id(\\d+)/instance_question/:instance_question_id(\\d+)',
     (await import('./pages/studentInstanceQuestion/studentInstanceQuestion.js')).default,
   );

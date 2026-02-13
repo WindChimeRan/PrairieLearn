@@ -1,10 +1,11 @@
 import { EncodedData } from '@prairielearn/browser-utils';
 import { escapeHtml, html, unsafeHtml } from '@prairielearn/html';
 import { run } from '@prairielearn/run';
+import { generatePrefixCsrfToken } from '@prairielearn/signed-token';
 
 import type { InstanceQuestionAIGradingInfo } from '../ee/lib/ai-grading/types.js';
 import { config } from '../lib/config.js';
-import { type CopyTarget } from '../lib/copy-content.js';
+import type { CopyTarget } from '../lib/copy-content.js';
 import type {
   AssessmentQuestion,
   CourseInstance,
@@ -918,6 +919,19 @@ function SubmissionList({
   submissionCount: number;
   renderSubmissionSearchParams?: URLSearchParams;
 }) {
+  // Generate a prefix CSRF token for the AI hints streaming endpoint.
+  // Only applicable for student-facing contexts where instance_question exists.
+  const aiHintsCsrfToken =
+    resLocals.instance_question && resLocals.authn_user
+      ? generatePrefixCsrfToken(
+          {
+            url: `${resLocals.urlPrefix}/instance_question/${resLocals.instance_question.id}/ai_hints`,
+            authn_user_id: resLocals.authn_user.id,
+          },
+          config.secretKey,
+        )
+      : undefined;
+
   return submissions.map((submission, idx) =>
     SubmissionPanel({
       questionContext,
@@ -933,6 +947,7 @@ function SubmissionList({
       rubric_data: resLocals.rubric_data,
       urlPrefix: resLocals.urlPrefix,
       renderSubmissionSearchParams,
+      aiHintsCsrfToken,
     }),
   );
 }
