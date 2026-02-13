@@ -1,11 +1,21 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import url from 'node:url';
+
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
+import mustache from 'mustache';
 
 import { logger } from '@prairielearn/logger';
 import { execute } from '@prairielearn/postgres';
 
 import { config } from '../../../lib/config.js';
 import type { Question, Submission, Variant } from '../../../lib/db-types.js';
+
+const promptTemplate = fs.readFileSync(
+  path.join(path.dirname(url.fileURLToPath(import.meta.url)), 'ai-feedback.prompt'),
+  'utf8',
+);
 
 /**
  * Generate AI feedback for a student submission after auto-grading.
@@ -44,17 +54,12 @@ export async function generateAiFeedback({
   const correctAnswer = JSON.stringify(variant.true_answer ?? {});
   const scorePercent = score != null ? Math.round(score * 100) : 'unknown';
 
-  const prompt = [
-    'You are a helpful teaching assistant providing feedback on a student submission.',
-    `Question: ${questionText}`,
-    `Student answer: ${submittedAnswer}`,
-    `Correct answer: ${correctAnswer}`,
-    `Score: ${scorePercent}%`,
-    '',
-    'Provide brief, helpful feedback to the student explaining what they got wrong and how to improve.',
-    'Address the student as "you". Keep the feedback concise (2-3 sentences).',
-    'If the score is 0, focus on the key concept they missed.',
-  ].join('\n');
+  const prompt = mustache.render(promptTemplate, {
+    questionText,
+    submittedAnswer,
+    correctAnswer,
+    scorePercent,
+  });
 
   const result = await generateText({
     model,
@@ -67,11 +72,11 @@ export async function generateAiFeedback({
   const feedbackJson = JSON.stringify({ ai_hints: feedbackText });
 
   await execute(
-    'UPDATE grading_jobs SET feedback = COALESCE(feedback, \'{}\'::jsonb) || $feedback::jsonb WHERE id = $grading_job_id',
+    "UPDATE grading_jobs SET feedback = COALESCE(feedback, '{}'::jsonb) || $feedback::jsonb WHERE id = $grading_job_id",
     { feedback: feedbackJson, grading_job_id },
   );
   await execute(
-    'UPDATE submissions SET feedback = COALESCE(feedback, \'{}\'::jsonb) || $feedback::jsonb WHERE id = $submission_id',
+    "UPDATE submissions SET feedback = COALESCE(feedback, '{}'::jsonb) || $feedback::jsonb WHERE id = $submission_id",
     { feedback: feedbackJson, submission_id: submission.id },
   );
 }
