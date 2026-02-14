@@ -3,7 +3,7 @@ import asyncHandler from 'express-async-handler';
 import { z } from 'zod';
 
 import { HttpStatusError } from '@prairielearn/error';
-import { loadSqlEquiv, queryOptionalRow } from '@prairielearn/postgres';
+import { loadSqlEquiv, queryOptionalRow, queryRow } from '@prairielearn/postgres';
 
 import { config } from '../../lib/config.js';
 import {
@@ -16,6 +16,8 @@ import { features } from '../../lib/features/index.js';
 import { streamAiFeedback } from '../lib/ai-grading/ai-feedback-stream.js';
 
 const sql = loadSqlEquiv(import.meta.url);
+
+const MAX_HINTS = 3;
 
 const SubmissionForAiHintsSchema = z.object({
   id: SubmissionSchema.shape.id,
@@ -50,6 +52,20 @@ router.post(
       throw new HttpStatusError(400, 'Missing submission_id');
     }
 
+    const studentPrompt: string | undefined = req.body.student_prompt || undefined;
+
+    // Enforce hint limit
+    const hintCount = await queryRow(
+      sql.count_ai_hints_for_instance_question,
+      { instance_question_id: res.locals.instance_question.id },
+      z.number(),
+    );
+
+    if (hintCount >= MAX_HINTS) {
+      res.status(429).json({ error: 'Hint limit reached', hints_used: hintCount });
+      return;
+    }
+
     const row = await queryOptionalRow(
       sql.select_submission_for_ai_hints,
       {
@@ -61,12 +77,6 @@ router.post(
 
     if (!row) {
       throw new HttpStatusError(404, 'Submission not found');
-    }
-
-    // If hints already exist, return them as JSON
-    if (row.feedback?.ai_hints) {
-      res.json({ ai_hints: row.feedback.ai_hints });
-      return;
     }
 
     // Only generate hints for incorrect answers
@@ -98,6 +108,7 @@ router.post(
       variant,
       question,
       score: row.score,
+      studentPrompt,
     });
 
     result.pipeTextStreamToResponse(res);

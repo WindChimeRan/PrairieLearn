@@ -48,7 +48,6 @@ export const SubmissionDetailedSchema = SubmissionSchema.pick(detailedSubmission
 export type SubmissionForRender = z.infer<typeof SubmissionBasicSchema> &
   Partial<z.infer<typeof SubmissionDetailedSchema>> & {
     feedback_manual_html?: string;
-    feedback_ai_hints_html?: string;
     submission_number: number;
     rubric_grading?: RubricGradingData | null;
   };
@@ -69,6 +68,7 @@ export function SubmissionPanel({
   expanded,
   renderSubmissionSearchParams,
   aiHintsCsrfToken,
+  aiHintsUsed,
 }: {
   questionContext: QuestionContext;
   questionRenderContext?: QuestionRenderContext;
@@ -85,6 +85,7 @@ export function SubmissionPanel({
   expanded?: boolean;
   renderSubmissionSearchParams?: URLSearchParams;
   aiHintsCsrfToken?: string;
+  aiHintsUsed?: number;
 }) {
   const isLatestSubmission = submission.submission_number === submissionCount;
   expanded = expanded || isLatestSubmission;
@@ -186,61 +187,18 @@ export function SubmissionPanel({
             </div>
           `
         : ''}
-      ${submission.feedback?.ai_hints
-        ? html`
-            <div class="card mb-4 grading-block border-warning">
-              <div
-                class="card-header bg-warning text-dark d-flex align-items-center collapsible-card-header ${!expanded
-                  ? ' collapsed'
-                  : ''}"
-              >
-                <div class="me-auto">
-                  AI hints
-                  ${submissionCount > 1
-                    ? `(for submitted answer ${submission.submission_number})`
-                    : ''}
-                </div>
-                <button
-                  type="button"
-                  class="expand-icon-container btn btn-outline-dark btn-sm ${!expanded
-                    ? 'collapsed'
-                    : ''}"
-                  data-bs-toggle="collapse"
-                  data-bs-target="#submission-ai-hints-${submission.id}-body"
-                  aria-expanded="${expanded ? 'true' : 'false'}"
-                  aria-controls="submission-ai-hints-${submission.id}-body"
-                >
-                  <i class="fa fa-angle-up ms-1 expand-icon"></i>
-                </button>
-              </div>
-              <div
-                class="collapse ${expanded ? 'show' : ''}"
-                id="submission-ai-hints-${submission.id}-body"
-              >
-                <div class="card-body">
-                  <div data-testid="ai-hints-body">
-                    ${unsafeHtml(submission.feedback_ai_hints_html ?? '')}
-                  </div>
-                </div>
-              </div>
-            </div>
-          `
-        : isLatestSubmission && aiHintsCsrfToken && submission.score != null && submission.score < 1
-          ? hydrateHtml(
-              <AiHintsStreaming
-                submissionId={submission.id}
-                variantId={variant_id}
-                urlPrefix={urlPrefix}
-                instanceQuestionId={instance_question?.id ?? ''}
-                score={submission.score}
-                hasExistingHints={false}
-                submissionCount={submissionCount}
-                submissionNumber={submission.submission_number}
-                expanded={!!expanded}
-                csrfToken={aiHintsCsrfToken}
-              />,
-            )
-          : ''}
+      ${isLatestSubmission && aiHintsCsrfToken && submission.score != null && submission.score < 1
+        ? hydrateHtml(
+            <AiHintsStreaming
+              submissionId={submission.id}
+              urlPrefix={urlPrefix}
+              instanceQuestionId={instance_question?.id ?? ''}
+              existingHintsJson={JSON.stringify(submission.feedback?.ai_hints ?? [])}
+              hintsUsed={aiHintsUsed ?? 0}
+              csrfToken={aiHintsCsrfToken}
+            />,
+          )
+        : ''}
 
       <div class="card mb-4" data-testid="submission-block">
         <div

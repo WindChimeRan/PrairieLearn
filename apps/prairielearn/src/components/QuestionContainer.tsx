@@ -932,6 +932,13 @@ function SubmissionList({
         )
       : undefined;
 
+  const aiHintsUsed = submissions.reduce((count, sub) => {
+    const hints = sub.feedback?.ai_hints;
+    if (Array.isArray(hints)) return count + hints.length;
+    if (hints) return count + 1;
+    return count;
+  }, 0);
+
   return submissions.map((submission, idx) =>
     SubmissionPanel({
       questionContext,
@@ -948,6 +955,7 @@ function SubmissionList({
       urlPrefix: resLocals.urlPrefix,
       renderSubmissionSearchParams,
       aiHintsCsrfToken,
+      aiHintsUsed,
     }),
   );
 }

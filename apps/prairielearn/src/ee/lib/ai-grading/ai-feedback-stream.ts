@@ -27,12 +27,14 @@ export function streamAiFeedback({
   variant,
   question,
   score,
+  studentPrompt,
 }: {
   grading_job_id: string;
   submission: Submission;
   variant: Variant;
   question: Question;
   score: number | null | undefined;
+  studentPrompt?: string;
 }) {
   const anthropic = createAnthropic({
     apiKey: config.aiGradingAnthropicApiKey!,
@@ -49,6 +51,7 @@ export function streamAiFeedback({
     submittedAnswer,
     correctAnswer,
     scorePercent,
+    studentPrompt: studentPrompt || null,
   });
 
   return streamText({
@@ -58,16 +61,30 @@ export function streamAiFeedback({
       const feedbackText = text.trim();
       if (!feedbackText) return;
 
-      const feedbackJson = JSON.stringify({ ai_hints: feedbackText });
+      const newHint = JSON.stringify({ text: feedbackText, student_prompt: studentPrompt ?? null });
 
       try {
         await execute(
-          "UPDATE grading_jobs SET feedback = COALESCE(feedback, '{}'::jsonb) || $feedback::jsonb WHERE id = $grading_job_id",
-          { feedback: feedbackJson, grading_job_id },
+          `UPDATE grading_jobs SET feedback = jsonb_set(
+            COALESCE(feedback, '{}'::jsonb),
+            '{ai_hints}',
+            COALESCE(
+              CASE WHEN jsonb_typeof(feedback->'ai_hints') = 'array' THEN feedback->'ai_hints' ELSE '[]'::jsonb END,
+              '[]'::jsonb
+            ) || $new_hint::jsonb
+          ) WHERE id = $grading_job_id`,
+          { new_hint: `[${newHint}]`, grading_job_id },
         );
         await execute(
-          "UPDATE submissions SET feedback = COALESCE(feedback, '{}'::jsonb) || $feedback::jsonb WHERE id = $submission_id",
-          { feedback: feedbackJson, submission_id: submission.id },
+          `UPDATE submissions SET feedback = jsonb_set(
+            COALESCE(feedback, '{}'::jsonb),
+            '{ai_hints}',
+            COALESCE(
+              CASE WHEN jsonb_typeof(feedback->'ai_hints') = 'array' THEN feedback->'ai_hints' ELSE '[]'::jsonb END,
+              '[]'::jsonb
+            ) || $new_hint::jsonb
+          ) WHERE id = $submission_id`,
+          { new_hint: `[${newHint}]`, submission_id: submission.id },
         );
       } catch (err) {
         logger.error('Failed to save streamed AI feedback to DB', err);

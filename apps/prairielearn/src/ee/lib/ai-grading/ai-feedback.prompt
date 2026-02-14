@@ -3,7 +3,14 @@ Question: {{questionText}}
 Student answer: {{submittedAnswer}}
 Correct answer: {{correctAnswer}}
 Score: {{scorePercent}}%
+{{#studentPrompt}}
+
+The student is asking: {{studentPrompt}}
+{{/studentPrompt}}
 
 Provide brief, helpful feedback to the student explaining what they got wrong and how to improve.
 Address the student as "you". Keep the feedback concise (2-3 sentences).
 If the score is 0, focus on the key concept they missed.
+{{#studentPrompt}}
+Make sure to address the student's specific question.
+{{/studentPrompt}}
