@@ -61,7 +61,7 @@ export function streamAiFeedback({
       const feedbackText = text.trim();
       if (!feedbackText) return;
 
-      const newHint = JSON.stringify({ text: feedbackText, student_prompt: studentPrompt ?? null });
+      const newHint = JSON.stringify({ text: feedbackText, student_prompt: studentPrompt ?? null, prompt });
 
       try {
         await execute(
