@@ -2,7 +2,7 @@
 
 ## Goal
 
-Develop and test **AI hints for students** (GitHub issue #13594). When a student submits an answer to an auto-graded question and gets it partially wrong, AI (Claude Haiku) automatically generates personalized hints explaining their mistakes. The hints appear in a yellow "AI hints" card in the student's submission panel — no instructor action required.
+Develop and test **AI hints for students** (GitHub issue #13594). When a student submits an incorrect answer to an auto-graded question, a yellow "AI hints" card appears with a **"Get AI hint"** button. The student clicks the button, and a hint streams in word-by-word from Claude Haiku. Students can request up to 3 hints per question and optionally describe what they need help with.
 
 ## Prerequisites
 
@@ -50,24 +50,25 @@ Feature flags are stored in the DB, which is ephemeral. Re-enable after every co
 1. Click **"Global Admin"** in the top nav bar
 2. Go to **Features**
 3. Enable **`ai-grading`** — add a grant (enable globally)
-4. Enable **`ai-grading-model-selection`** — required to select Claude Haiku 4.5 (the default model is OpenAI GPT 5-mini, which won't work with our Anthropic key)
+
+> The `ai-grading-model-selection` flag is only needed for instructor-side AI grading. Student-side AI hints hardcode Claude Haiku 4.5 and don't require it.
 
 ## Testing AI hints (student side)
 
-AI hints are generated automatically after auto-grading — no instructor action required.
-
 ### How to test
 
-1. Open **TRACING 101** course → **Sp26** course instance
+1. Open **TRACING 101** course -> **Sp26** course instance
 2. Open one of the **practice assessments**: **How to Trace** (stage 1), **Why to Trace** (stage 2), or **What to Trace** (stage 3)
 3. Submit a **partially wrong** answer and click **"Save & Grade"**
 4. Auto-grading runs (you'll see a score like 80%)
-5. Wait a few seconds, then refresh the page
-6. A yellow **"AI hints"** card appears below the submission with personalized feedback
+5. A yellow **"AI hints"** card appears below the submission with a **"Get AI hint"** button
+6. Click the button — a hint streams in word-by-word
+7. Optionally type a question in the text area before clicking (e.g., "Why is row 3 wrong?")
+8. Request up to 3 hints — the badge shows **"N/3 hints used"**
 
 > All practice questions (stages 1-3) are internally auto-graded — AI hints work on all of them.
 > Pre/post tests are out of scope — no need to test AI hints there.
-> AI hints are generated asynchronously after grading completes, so a brief wait + refresh may be needed.
+> AI hints only appear for submissions with score < 100%.
 
 ### Example test question
 
@@ -75,16 +76,16 @@ AI hints are generated automatically after auto-grading — no instructor action
 
 ### Where hints are displayed
 
-- **Student view:** Yellow "AI hints" card in the `SubmissionPanel`, rendered from `feedback.ai_hints` in the grading job
+- **Student view:** Yellow "AI hints" card (hydrated React component) in the submission panel
 - **Instructor view:** Not directly visible — AI hints are student-facing only
 
 ## Courses available
 
-| Course | Source |
-|--------|--------|
+| Course                                                   | Source                                                 |
+| -------------------------------------------------------- | ------------------------------------------------------ |
 | **TRACING 101: Code Tracing Activities and Assessments** | `/Users/ran/workspace/tracing_questions` (your course) |
-| QA 101: Test Course | Built-in `testCourse` |
-| XC 101: Example Course | Built-in `exampleCourse` |
+| QA 101: Test Course                                      | Built-in `testCourse`                                  |
+| XC 101: Example Course                                   | Built-in `exampleCourse`                               |
 
 ## After editing course JSON files
 
@@ -96,43 +97,11 @@ Click **"Load from disk"** again to reload. Non-JSON changes (JS, HTML, Python) 
 
 ---
 
-## Key code locations for AI feedback feature (#13594)
-
-### The gap
-
-- **Non-rubric mode:** AI generates student-facing `feedback` and stores it in `grading_jobs.feedback.manual`
-- **Rubric mode:** AI only returns rubric item selections + instructor `explanation`. Feedback is stored as empty string. There is a TODO comment: `// TODO: consider asking for and recording freeform feedback.`
-
-### Files to modify
-
-| What | File | Lines |
-|------|------|-------|
-| Rubric prompt (add feedback instruction) | `src/ee/lib/ai-grading/ai-grading-util.ts` | ~115-150 |
-| Rubric response schema (add `feedback` field) | `src/ee/lib/ai-grading/ai-grading.ts` | ~383-390 |
-| Rubric feedback storage (replace empty string) | `src/ee/lib/ai-grading/ai-grading.ts` | ~548-550 |
-
-### Files for reference (already working in non-rubric mode)
-
-| What | File | Lines |
-|------|------|-------|
-| Non-rubric prompt (has feedback instruction) | `src/ee/lib/ai-grading/ai-grading-util.ts` | ~151-165 |
-| Non-rubric response schema (has `feedback`) | `src/ee/lib/ai-grading/ai-grading.ts` | ~660-675 |
-| Non-rubric feedback storage | `src/ee/lib/ai-grading/ai-grading.ts` | ~796-805 |
-| Student-facing feedback display | `src/components/SubmissionPanel.tsx` | ~175 |
-| Feedback markdown to HTML conversion | `src/lib/manualGrading.ts` | ~218-219 |
-| Instructor-facing explanation display | `src/pages/.../instanceQuestion/instanceQuestion.ts` | ~179-220 |
-
-### No UI changes needed
-
-The `SubmissionPanel` already renders `feedback_manual_html` from `grading_jobs.feedback.manual`. Once feedback is generated and stored in rubric mode, it will display automatically.
-
----
-
 ## Deployment: Self-hosting on Google Cloud
 
 ### Overview
 
-Deploy PrairieLearn (with AI feedback feature) on a single GCE VM. Build a custom Docker image from the `ai_feedback` branch since the stock image doesn't include our changes.
+Deploy PrairieLearn (with AI hints feature) on a single GCE VM. Build a custom Docker image from the `ai_feedback` branch since the stock image doesn't include our changes.
 
 **Strategy:** Build on the VM directly — no container registry needed.
 
@@ -208,16 +177,16 @@ docker run -d --restart unless-stopped -p 3000:3000 \
 
 1. Open `http://VM_EXTERNAL_IP:3000`
 2. Load course from disk
-3. Enable feature flags: `ai-grading` and `ai-grading-model-selection` (Global Admin → Features)
+3. Enable feature flag: `ai-grading` (Global Admin -> Features)
 
 ### Security checklist
 
-| Item | Action |
-|------|--------|
-| **Firewall** | GCP firewall rule: allow port 3000 only from your IP range |
+| Item               | Action                                                               |
+| ------------------ | -------------------------------------------------------------------- |
+| **Firewall**       | GCP firewall rule: allow port 3000 only from your IP range           |
 | **Authentication** | `NODE_ENV=production` + Google OAuth, or restrict by IP for dev mode |
-| **API key** | `config.json` with `chmod 600`, or use Secret Manager |
-| **Docker image** | Built on VM, not pushed anywhere — private by default |
+| **API key**        | `config.json` with `chmod 600`, or use Secret Manager                |
+| **Docker image**   | Built on VM, not pushed anywhere — private by default                |
 
 ### Updating after code changes
 
