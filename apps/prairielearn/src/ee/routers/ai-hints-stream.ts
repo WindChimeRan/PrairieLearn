@@ -13,7 +13,11 @@ import {
   VariantSchema,
 } from '../../lib/db-types.js';
 import { features } from '../../lib/features/index.js';
+import { buildQuestionUrls } from '../../lib/question-render.js';
+import { getQuestionCourse } from '../../lib/question-variant.js';
+import * as questionServers from '../../question-servers/index.js';
 import { streamAiFeedback } from '../lib/ai-grading/ai-feedback-stream.js';
+import { stripHtmlForAiGrading } from '../lib/ai-grading/ai-grading-render.js';
 
 const sql = loadSqlEquiv(import.meta.url);
 
@@ -95,8 +99,32 @@ router.post(
       throw new HttpStatusError(404, 'Question not found');
     }
 
-    // Build a minimal variant object for the stream function
-    const variant = { true_answer: row.true_answer } as any;
+    // Fetch the full variant for rendering
+    const variant = await queryRow(
+      sql.select_variant_for_ai_hints,
+      { variant_id: row.variant_id },
+      VariantSchema,
+    );
+
+    // Render question HTML and strip it for the LLM prompt
+    const question_course = await getQuestionCourse(question, res.locals.course);
+    const locals = {
+      ...buildQuestionUrls(res.locals.urlPrefix, variant, question, res.locals.instance_question),
+      questionRenderContext: 'ai_grading',
+    };
+    const questionModule = questionServers.getModule(question.type);
+    const renderResult = await questionModule.render(
+      { question: true, submissions: false, answer: true },
+      variant,
+      question,
+      null,
+      [],
+      question_course,
+      locals,
+    );
+    const questionHtml = await stripHtmlForAiGrading(renderResult.data.questionHtml);
+    const answerHtml = await stripHtmlForAiGrading(renderResult.data.answerHtml);
+
     const submission = {
       id: row.id,
       submitted_answer: row.submitted_answer,
@@ -105,8 +133,8 @@ router.post(
     const result = streamAiFeedback({
       grading_job_id: row.grading_job_id,
       submission,
-      variant,
-      question,
+      questionHtml,
+      answerHtml,
       score: row.score,
       studentPrompt,
     });

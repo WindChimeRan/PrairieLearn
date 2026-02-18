@@ -21,6 +21,14 @@ ORDER BY
 LIMIT
   1;
 
+-- BLOCK select_variant_for_ai_hints
+SELECT
+  *
+FROM
+  variants
+WHERE
+  id = $variant_id;
+
 -- BLOCK count_ai_hints_for_instance_question
 SELECT
   COALESCE(

@@ -10,7 +10,7 @@ import { logger } from '@prairielearn/logger';
 import { execute } from '@prairielearn/postgres';
 
 import { config } from '../../../lib/config.js';
-import type { Question, Submission, Variant } from '../../../lib/db-types.js';
+import type { Submission } from '../../../lib/db-types.js';
 
 const promptTemplate = fs.readFileSync(
   path.join(path.dirname(url.fileURLToPath(import.meta.url)), 'ai-feedback.prompt'),
@@ -24,15 +24,15 @@ const promptTemplate = fs.readFileSync(
 export function streamAiFeedback({
   grading_job_id,
   submission,
-  variant,
-  question,
+  questionHtml,
+  answerHtml,
   score,
   studentPrompt,
 }: {
   grading_job_id: string;
   submission: Submission;
-  variant: Variant;
-  question: Question;
+  questionHtml: string;
+  answerHtml: string;
   score: number | null | undefined;
   studentPrompt?: string;
 }) {
@@ -41,9 +41,9 @@ export function streamAiFeedback({
   });
   const model = anthropic('claude-haiku-4-5');
 
-  const questionText = question.title ?? 'Unknown question';
+  const questionText = questionHtml;
   const submittedAnswer = JSON.stringify(submission.submitted_answer ?? {});
-  const correctAnswer = JSON.stringify(variant.true_answer ?? {});
+  const correctAnswer = answerHtml;
   const scorePercent = score != null ? Math.round(score * 100) : 'unknown';
 
   const prompt = mustache.render(promptTemplate, {
@@ -61,7 +61,11 @@ export function streamAiFeedback({
       const feedbackText = text.trim();
       if (!feedbackText) return;
 
-      const newHint = JSON.stringify({ text: feedbackText, student_prompt: studentPrompt ?? null, prompt });
+      const newHint = JSON.stringify({
+        text: feedbackText,
+        student_prompt: studentPrompt ?? null,
+        prompt,
+      });
 
       try {
         await execute(
