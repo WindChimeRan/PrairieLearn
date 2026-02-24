@@ -49,16 +49,15 @@ export async function generateAiFeedback({
   });
   const model = anthropic('claude-haiku-4-5');
 
-  const questionText = question.title ?? 'Unknown question';
-  const submittedAnswer = JSON.stringify(submission.submitted_answer ?? {});
-  const correctAnswer = JSON.stringify(variant.true_answer ?? {});
-  const scorePercent = score != null ? Math.round(score * 100) : 'unknown';
-
   const prompt = mustache.render(promptTemplate, {
-    questionText,
-    submittedAnswer,
-    correctAnswer,
-    scorePercent,
+    questions: [
+      {
+        answersName: question.qid ?? question.title ?? 'Question',
+        questionText: question.title ?? 'Unknown question',
+        submittedAnswer: JSON.stringify(submission.submitted_answer ?? {}),
+        correctAnswer: JSON.stringify(variant.true_answer ?? {}),
+      },
+    ],
   });
 
   const result = await generateText({

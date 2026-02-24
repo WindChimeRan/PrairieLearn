@@ -137,6 +137,7 @@ router.post(
       answerHtml,
       score: row.score,
       studentPrompt,
+      questionName: question.qid ?? question.title ?? undefined,
     });
 
     result.pipeTextStreamToResponse(res);

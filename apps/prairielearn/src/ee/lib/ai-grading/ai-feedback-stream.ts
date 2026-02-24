@@ -28,6 +28,7 @@ export function streamAiFeedback({
   answerHtml,
   score,
   studentPrompt,
+  questionName,
 }: {
   grading_job_id: string;
   submission: Submission;
@@ -35,22 +36,22 @@ export function streamAiFeedback({
   answerHtml: string;
   score: number | null | undefined;
   studentPrompt?: string;
+  questionName?: string;
 }) {
   const anthropic = createAnthropic({
     apiKey: config.aiGradingAnthropicApiKey!,
   });
   const model = anthropic('claude-haiku-4-5');
 
-  const questionText = questionHtml;
-  const submittedAnswer = JSON.stringify(submission.submitted_answer ?? {});
-  const correctAnswer = answerHtml;
-  const scorePercent = score != null ? Math.round(score * 100) : 'unknown';
-
   const prompt = mustache.render(promptTemplate, {
-    questionText,
-    submittedAnswer,
-    correctAnswer,
-    scorePercent,
+    questions: [
+      {
+        answersName: questionName ?? 'Question',
+        questionText: questionHtml,
+        submittedAnswer: JSON.stringify(submission.submitted_answer ?? {}),
+        correctAnswer: answerHtml,
+      },
+    ],
     studentPrompt: studentPrompt || null,
   });
 
