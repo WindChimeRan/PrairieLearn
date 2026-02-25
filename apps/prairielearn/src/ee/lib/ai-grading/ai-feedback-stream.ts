@@ -25,7 +25,8 @@ export function streamAiFeedback({
   grading_job_id,
   submission,
   questionHtml,
-  answerHtml,
+  trueAnswer,
+  partialScores,
   score,
   studentPrompt,
   questionName,
@@ -33,7 +34,8 @@ export function streamAiFeedback({
   grading_job_id: string;
   submission: Submission;
   questionHtml: string;
-  answerHtml: string;
+  trueAnswer: Record<string, any> | null;
+  partialScores: Record<string, any> | null;
   score: number | null | undefined;
   studentPrompt?: string;
   questionName?: string;
@@ -49,7 +51,8 @@ export function streamAiFeedback({
         answersName: questionName ?? 'Question',
         questionText: questionHtml,
         submittedAnswer: JSON.stringify(submission.submitted_answer ?? {}),
-        correctAnswer: answerHtml,
+        trueAnswer: JSON.stringify(trueAnswer ?? {}),
+        partialScores: JSON.stringify(partialScores ?? {}),
       },
     ],
     studentPrompt: studentPrompt || null,

@@ -93,13 +93,14 @@ The full question page (including the buggy code, tracing tables, and all questi
 
 **Student answers for this page:**
 {{#questions}}
-**[{{answersName}}]**
-- Question: {{questionText}}
-- Student's answer: {{submittedAnswer}}
-- Correct answer (DO NOT REVEAL — for your internal reasoning only): {{correctAnswer}}
+**[{{{answersName}}}]**
+- Question: {{{questionText}}}
+- Student's answer: {{{submittedAnswer}}}
+- Correct answer (DO NOT REVEAL — for your internal reasoning only): {{{trueAnswer}}}
+- Grading result (per-field scores): {{{partialScores}}}
 {{/questions}}
 
 {{#studentPrompt}}
-**The student is also asking:** {{studentPrompt}}
+**The student is also asking:** {{{studentPrompt}}}
 Address their specific question using the Socratic approach above. If they are asking a genuine conceptual question (e.g., "what does += mean?"), you MAY give a direct explanation of the concept. If they are asking for the answer to the exercise itself, redirect them.
 {{/studentPrompt}}

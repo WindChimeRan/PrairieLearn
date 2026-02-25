@@ -4,6 +4,7 @@ SELECT
   s.variant_id,
   s.score,
   s.feedback,
+  s.partial_scores,
   s.submitted_answer,
   v.id AS variant_id,
   v.true_answer,

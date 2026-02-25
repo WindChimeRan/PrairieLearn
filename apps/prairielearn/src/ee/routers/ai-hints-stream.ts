@@ -28,6 +28,7 @@ const SubmissionForAiHintsSchema = z.object({
   variant_id: SubmissionSchema.shape.variant_id,
   score: SubmissionSchema.shape.score,
   feedback: SubmissionSchema.shape.feedback,
+  partial_scores: SubmissionSchema.shape.partial_scores,
   submitted_answer: SubmissionSchema.shape.submitted_answer,
   true_answer: VariantSchema.shape.true_answer,
   question_id: VariantSchema.shape.question_id,
@@ -114,7 +115,7 @@ router.post(
     };
     const questionModule = questionServers.getModule(question.type);
     const renderResult = await questionModule.render(
-      { question: true, submissions: false, answer: true },
+      { question: true, submissions: false, answer: false },
       variant,
       question,
       null,
@@ -123,7 +124,6 @@ router.post(
       locals,
     );
     const questionHtml = await stripHtmlForAiGrading(renderResult.data.questionHtml);
-    const answerHtml = await stripHtmlForAiGrading(renderResult.data.answerHtml);
 
     const submission = {
       id: row.id,
@@ -134,7 +134,8 @@ router.post(
       grading_job_id: row.grading_job_id,
       submission,
       questionHtml,
-      answerHtml,
+      trueAnswer: row.true_answer,
+      partialScores: row.partial_scores,
       score: row.score,
       studentPrompt,
       questionName: question.qid ?? question.title ?? undefined,
