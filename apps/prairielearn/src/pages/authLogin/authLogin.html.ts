@@ -212,8 +212,12 @@ export function AuthLogin({
     children: html`
       ${config.devMode
         ? html`
-            ${DevModeBypass()}
-            <hr />
+            ${config.devModeAutoLogin
+              ? html`
+                  ${DevModeBypass()}
+                  <hr />
+                `
+              : ''}
             ${DevModeLogin({ csrfToken: resLocals.__csrf_token })}
             <hr />
           `

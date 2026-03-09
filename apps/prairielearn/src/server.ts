@@ -2129,13 +2129,15 @@ export async function stopServer() {
 
 export async function insertDevUser() {
   // add dev user as Administrator
+  const uid = config.authUid ?? 'dev@example.com';
+  const name = config.authName ?? 'Dev User';
   const sql =
     'INSERT INTO users (uid, name)' +
-    " VALUES ('dev@example.com', 'Dev User')" +
+    ' VALUES ($uid, $name)' +
     ' ON CONFLICT (uid) DO UPDATE' +
     ' SET name = EXCLUDED.name' +
     ' RETURNING id;';
-  const user_id = await sqldb.queryRow(sql, UserSchema.shape.id);
+  const user_id = await sqldb.queryRow(sql, { uid, name }, UserSchema.shape.id);
   const adminSql =
     'INSERT INTO administrators (user_id)' +
     ' VALUES ($user_id)' +
