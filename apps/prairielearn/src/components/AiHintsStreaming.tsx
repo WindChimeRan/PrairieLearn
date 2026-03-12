@@ -1,5 +1,7 @@
 import { useCallback, useReducer, useRef, useState } from 'react';
 
+import { MemoizedMarkdown } from './MemoizedMarkdown.js';
+
 const MAX_HINTS = 3;
 
 interface AiHint {
@@ -159,6 +161,10 @@ export function AiHintsStreaming({
         </span>
       </div>
       <div className="card-body">
+        <div className="alert alert-info small" role="alert">
+          You have {MAX_HINTS} AI hints available for this question. Use them wisely — once used,
+          they cannot be reset.
+        </div>
         {/* Hints are append-only and never reorder, so index keys are safe */}
         {hints.map((hint, idx) => (
           // eslint-disable-next-line @eslint-react/no-array-index-key
@@ -171,7 +177,9 @@ export function AiHintsStreaming({
                 Your question: {hint.student_prompt}
               </div>
             ) : null}
-            <div className="ps-2 border-start border-warning border-3">{hint.text}</div>
+            <div className="ps-2 border-start border-warning border-3">
+              <MemoizedMarkdown content={hint.text} />
+            </div>
           </div>
         ))}
 
@@ -184,7 +192,7 @@ export function AiHintsStreaming({
               <div className="mb-1 fst-italic text-muted small">Your question: {studentPrompt}</div>
             ) : null}
             <div className="ps-2 border-start border-warning border-3">
-              {state.text}
+              <MemoizedMarkdown content={state.text} />
               <span className="ms-1">
                 <span className="spinner-border spinner-border-sm" role="status">
                   <span className="visually-hidden">Loading...</span>
