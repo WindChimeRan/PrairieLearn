@@ -69,6 +69,7 @@ export function SubmissionPanel({
   renderSubmissionSearchParams,
   aiHintsCsrfToken,
   aiHintsUsed,
+  allAiHints,
 }: {
   questionContext: QuestionContext;
   questionRenderContext?: QuestionRenderContext;
@@ -86,6 +87,7 @@ export function SubmissionPanel({
   renderSubmissionSearchParams?: URLSearchParams;
   aiHintsCsrfToken?: string;
   aiHintsUsed?: number;
+  allAiHints?: unknown[];
 }) {
   const isLatestSubmission = submission.submission_number === submissionCount;
   expanded = expanded || isLatestSubmission;
@@ -193,7 +195,7 @@ export function SubmissionPanel({
               submissionId={submission.id}
               urlPrefix={urlPrefix}
               instanceQuestionId={instance_question?.id ?? ''}
-              existingHintsJson={JSON.stringify(submission.feedback?.ai_hints ?? [])}
+              existingHintsJson={JSON.stringify(allAiHints ?? submission.feedback?.ai_hints ?? [])}
               hintsUsed={aiHintsUsed ?? 0}
               csrfToken={aiHintsCsrfToken}
             />,

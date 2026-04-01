@@ -932,12 +932,13 @@ function SubmissionList({
         )
       : undefined;
 
-  const aiHintsUsed = submissions.reduce((count, sub) => {
+  const allAiHints = submissions.flatMap((sub) => {
     const hints = sub.feedback?.ai_hints;
-    if (Array.isArray(hints)) return count + hints.length;
-    if (hints) return count + 1;
-    return count;
-  }, 0);
+    if (Array.isArray(hints)) return hints;
+    if (hints) return [hints];
+    return [];
+  });
+  const aiHintsUsed = allAiHints.length;
 
   return submissions.map((submission, idx) =>
     SubmissionPanel({
@@ -956,6 +957,7 @@ function SubmissionList({
       renderSubmissionSearchParams,
       aiHintsCsrfToken,
       aiHintsUsed,
+      allAiHints,
     }),
   );
 }

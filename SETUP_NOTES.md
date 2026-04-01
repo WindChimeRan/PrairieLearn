@@ -51,7 +51,7 @@ Feature flags are stored in the DB, which is ephemeral. Re-enable after every co
 2. Go to **Features**
 3. Enable **`ai-grading`** — add a grant (enable globally)
 
-> The `ai-grading-model-selection` flag is only needed for instructor-side AI grading. Student-side AI hints hardcode Claude Haiku 4.5 and don't require it.
+> The `ai-grading-model-selection` flag is only needed for instructor-side AI grading. Student-side AI hints hardcode Claude Opus 4.6 and don't require it.
 
 ## Testing AI hints (student side)
 
@@ -101,38 +101,43 @@ Click **"Load from disk"** again to reload. Non-JSON changes (JS, HTML, Python) 
 
 ### Overview
 
-Deploy PrairieLearn (with AI hints feature) on a single GCE VM. Build a custom Docker image from the `ai_feedback` branch since the stock image doesn't include our changes.
+Deploy PrairieLearn (with AI hints feature) on a single GCE VM. The Docker image is built locally (the VM has limited RAM) and pushed to Docker Hub, then pulled on the VM.
 
-**Strategy:** Build on the VM directly — no container registry needed.
+### User-facing URLs
 
-### GCP setup
+- Register new account: http://34.45.24.21:3000/pl/login
+- Register the course: http://34.45.24.21:3000/pl/course_instance/8/assessments
+- Students need to login, then use the direct link (auto-course-signin)
 
-1. Create a GCP project and enable Compute Engine API
-2. Create a VM:
-   - **Machine type:** `e2-medium` (2 vCPU, 4 GB RAM) — sufficient for ~10 users
-   - **Region:** Pick one close to your users (e.g., `us-central1`)
-   - **OS:** Ubuntu 22.04 LTS or Container-Optimized OS
-   - **Disk:** 30 GB standard persistent disk
-   - **Estimated cost:** ~$30/month (covered by $300 free trial credit)
-
-### Build the Docker image on the VM
+### Cloud SSH
 
 ```bash
-# SSH into the VM
-gcloud compute ssh YOUR_VM_NAME
+gcloud compute ssh --project=gen-lang-client-0781214169 --zone=us-central1-c pl-ai-hint
+```
 
-# Install Docker if not already present (Ubuntu)
-sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
-sudo usermod -aG docker $USER
-# Log out and back in for group change to take effect
+### Build and push (from local machine)
 
-# Clone the repo and checkout ai_feedback branch
-git clone https://github.com/YOUR_USER/PrairieLearn.git
-cd PrairieLearn
-git checkout ai_feedback
+```bash
+# From the PrairieLearn repo root, on ai_feedback branch
+docker build --platform linux/amd64 -t haoranz6/prairielearn:local .
+docker push haoranz6/prairielearn:local
+```
 
-# Build (takes 10-20 min first time)
-docker build -t pl:ai-feedback .
+### Deploy on GCP VM
+
+```bash
+# On the VM — login to Docker Hub once
+docker login
+
+# Pull and restart
+docker stop pl-training && docker rm pl-training
+docker pull haoranz6/prairielearn:local
+docker run -d --restart unless-stopped -p 3000:3000 \
+  -v pl-postgres:/var/postgres \
+  -v $HOME/config.json:/PrairieLearn/config.json \
+  -v $HOME/tracing_questions:/course \
+  --name pl-training \
+  haoranz6/prairielearn:local
 ```
 
 ### Configuration
@@ -141,41 +146,15 @@ Create `config.json` on the VM (NOT in the repo):
 
 ```json
 {
-  "serverCanonicalHost": "https://your-domain-or-ip",
-  "cookieDomain": ".your-domain.com",
-  "hasOauth": true,
-  "googleClientId": "xxx",
-  "googleClientSecret": "xxx",
-  "googleRedirectUrl": "https://your-domain.com/pl/oauth2callback",
   "aiGradingAnthropicApiKey": "sk-ant-xxx"
 }
 ```
 
 > **Security:** Never commit this file. Protect with `chmod 600 config.json`.
-> For extra safety, use Google Secret Manager to fetch the Anthropic key at startup.
-
-If testing without a domain (raw IP, dev mode), you can skip OAuth and just set:
-
-```json
-{
-  "aiGradingAnthropicApiKey": "sk-ant-xxx"
-}
-```
-
-### Run
-
-```bash
-docker run -d --restart unless-stopped -p 3000:3000 \
-  -v pl-postgres:/var/postgres \
-  -v $HOME/config.json:/PrairieLearn/config.json \
-  -v $HOME/tracing_questions:/course \
-  --name prairielearn \
-  pl:ai-feedback
-```
 
 ### Post-launch setup
 
-1. Open `http://VM_EXTERNAL_IP:3000`
+1. Open http://34.45.24.21:3000
 2. Load course from disk
 3. Enable feature flag: `ai-grading` (Global Admin -> Features)
 
@@ -184,19 +163,9 @@ docker run -d --restart unless-stopped -p 3000:3000 \
 | Item               | Action                                                               |
 | ------------------ | -------------------------------------------------------------------- |
 | **Firewall**       | GCP firewall rule: allow port 3000 only from your IP range           |
-| **Authentication** | `NODE_ENV=production` + Google OAuth, or restrict by IP for dev mode |
+| **Authentication** | Dev mode for student testing, or `NODE_ENV=production` + Google OAuth |
 | **API key**        | `config.json` with `chmod 600`, or use Secret Manager                |
-| **Docker image**   | Built on VM, not pushed anywhere — private by default                |
-
-### Updating after code changes
-
-```bash
-cd ~/PrairieLearn
-git pull origin ai_feedback
-docker build -t pl:ai-feedback .
-docker stop prairielearn && docker rm prairielearn
-# Re-run the docker run command above
-```
+| **Docker image**   | Pushed to `haoranz6/prairielearn:local` on Docker Hub                |
 
 > **Note:** The Postgres volume (`pl-postgres`) persists across container restarts,
 > so DB data (feature flags, student submissions, etc.) is preserved.
