@@ -48,3 +48,18 @@ FROM
   JOIN variants AS v ON (v.id = s.variant_id)
 WHERE
   v.instance_question_id = $instance_question_id;
+
+-- BLOCK select_history_for_ai_hints
+SELECT
+  s.id,
+  s.date,
+  s.submitted_answer,
+  s.partial_scores,
+  s.feedback -> 'ai_hints' AS ai_hints
+FROM
+  submissions AS s
+  JOIN variants AS v ON (v.id = s.variant_id)
+WHERE
+  v.instance_question_id = $instance_question_id
+ORDER BY
+  s.date ASC;

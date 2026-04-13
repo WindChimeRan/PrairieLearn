@@ -17,6 +17,13 @@ const promptTemplate = fs.readFileSync(
   'utf8',
 );
 
+interface ConversationTurn {
+  wish_number: number;
+  student_question: string | null;
+  oracle_response: string;
+  submission_number: number;
+}
+
 /**
  * Stream AI feedback for a student submission after auto-grading.
  * Returns the streamText result so the caller can pipe the text stream to the response.
@@ -27,23 +34,33 @@ export function streamAiFeedback({
   questionHtml,
   trueAnswer,
   partialScores,
-  score,
   studentPrompt,
   questionName,
+  wishNumber,
+  previousStudentAnswer,
+  previousGradingResult,
+  conversationHistory,
 }: {
   grading_job_id: string;
   submission: Submission;
   questionHtml: string;
   trueAnswer: Record<string, any> | null;
   partialScores: Record<string, any> | null;
-  score: number | null | undefined;
   studentPrompt?: string;
   questionName?: string;
+  wishNumber: number;
+  previousStudentAnswer: Record<string, any> | null;
+  previousGradingResult: Record<string, any> | null;
+  conversationHistory: ConversationTurn[];
 }) {
   const anthropic = createAnthropic({
     apiKey: config.aiGradingAnthropicApiKey!,
   });
   const model = anthropic('claude-opus-4-6');
+
+  const hasPreviousSubmission = previousStudentAnswer != null;
+  const hasHistory = conversationHistory.length > 0;
+  const isFinalHint = wishNumber >= 3;
 
   const prompt = mustache.render(promptTemplate, {
     questions: [
@@ -56,6 +73,15 @@ export function streamAiFeedback({
       },
     ],
     studentPrompt: studentPrompt || null,
+    wishNumber,
+    hasHistory,
+    conversationHistory,
+    hasPreviousSubmission,
+    previousStudentAnswer: hasPreviousSubmission ? JSON.stringify(previousStudentAnswer) : null,
+    previousGradingResult: hasPreviousSubmission
+      ? JSON.stringify(previousGradingResult ?? {})
+      : null,
+    isFinalHint,
   });
 
   return streamText({
@@ -68,7 +94,6 @@ export function streamAiFeedback({
       const newHint = JSON.stringify({
         text: feedbackText,
         student_prompt: studentPrompt ?? null,
-        prompt,
       });
 
       try {

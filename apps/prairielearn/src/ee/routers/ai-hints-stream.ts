@@ -3,7 +3,7 @@ import asyncHandler from 'express-async-handler';
 import { z } from 'zod';
 
 import { HttpStatusError } from '@prairielearn/error';
-import { loadSqlEquiv, queryOptionalRow, queryRow } from '@prairielearn/postgres';
+import { loadSqlEquiv, queryOptionalRow, queryRow, queryRows } from '@prairielearn/postgres';
 
 import { config } from '../../lib/config.js';
 import {
@@ -34,6 +34,84 @@ const SubmissionForAiHintsSchema = z.object({
   question_id: VariantSchema.shape.question_id,
   grading_job_id: GradingJobSchema.shape.id,
 });
+
+const HistoryRowForAiHintsSchema = z.object({
+  id: SubmissionSchema.shape.id,
+  submitted_answer: SubmissionSchema.shape.submitted_answer,
+  partial_scores: SubmissionSchema.shape.partial_scores,
+  ai_hints: z.unknown(),
+});
+
+interface ConversationTurn {
+  wish_number: number;
+  student_question: string | null;
+  oracle_response: string;
+  submission_number: number;
+}
+
+interface HistoryContext {
+  wishNumber: number;
+  previousStudentAnswer: Record<string, any> | null;
+  previousGradingResult: Record<string, any> | null;
+  conversationHistory: ConversationTurn[];
+}
+
+function normalizeStoredHints(
+  raw: unknown,
+): { text: string; student_prompt: string | null }[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    const result: { text: string; student_prompt: string | null }[] = [];
+    for (const item of raw) {
+      if (typeof item === 'string') {
+        if (item) result.push({ text: item, student_prompt: null });
+      } else if (item && typeof item === 'object') {
+        const obj = item as Record<string, unknown>;
+        const text = typeof obj.text === 'string' ? obj.text : '';
+        const studentPrompt = typeof obj.student_prompt === 'string' ? obj.student_prompt : null;
+        if (text) result.push({ text, student_prompt: studentPrompt });
+      }
+    }
+    return result;
+  }
+  if (typeof raw === 'string') {
+    return raw ? [{ text: raw, student_prompt: null }] : [];
+  }
+  return [];
+}
+
+function buildHistoryContext(
+  rows: z.infer<typeof HistoryRowForAiHintsSchema>[],
+  currentSubmissionId: string,
+): HistoryContext {
+  const conversationHistory: ConversationTurn[] = [];
+  let wishCounter = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const submissionNumber = i + 1;
+    const hints = normalizeStoredHints(row.ai_hints);
+    for (const hint of hints) {
+      wishCounter += 1;
+      conversationHistory.push({
+        wish_number: wishCounter,
+        student_question: hint.student_prompt,
+        oracle_response: hint.text,
+        submission_number: submissionNumber,
+      });
+    }
+  }
+
+  const currentIndex = rows.findIndex((r) => r.id === currentSubmissionId);
+  const previousRow = currentIndex > 0 ? rows[currentIndex - 1] : null;
+
+  return {
+    wishNumber: wishCounter + 1,
+    previousStudentAnswer: previousRow?.submitted_answer ?? null,
+    previousGradingResult: previousRow?.partial_scores ?? null,
+    conversationHistory,
+  };
+}
 
 const router = Router({ mergeParams: true });
 
@@ -130,15 +208,25 @@ router.post(
       submitted_answer: row.submitted_answer,
     } as any;
 
+    const historyRows = await queryRows(
+      sql.select_history_for_ai_hints,
+      { instance_question_id: res.locals.instance_question.id },
+      HistoryRowForAiHintsSchema,
+    );
+    const historyContext = buildHistoryContext(historyRows, submissionId);
+
     const result = streamAiFeedback({
       grading_job_id: row.grading_job_id,
       submission,
       questionHtml,
       trueAnswer: row.true_answer,
       partialScores: row.partial_scores,
-      score: row.score,
       studentPrompt,
       questionName: question.qid ?? question.title ?? undefined,
+      wishNumber: historyContext.wishNumber,
+      previousStudentAnswer: historyContext.previousStudentAnswer,
+      previousGradingResult: historyContext.previousGradingResult,
+      conversationHistory: historyContext.conversationHistory,
     });
 
     result.pipeTextStreamToResponse(res);
