@@ -162,8 +162,8 @@ export function AiHintsStreaming({
       </div>
       <div className="card-body">
         <div className="alert alert-info small" role="alert">
-          You have {MAX_HINTS} AI hints available for this question. Use them wisely — once used,
-          they cannot be reset.
+          You have {MAX_HINTS} wishes for this page. Tell the Genie what's puzzling you — it can see
+          your work and the grader's feedback.
         </div>
         {/* Hints are append-only and never reorder, so index keys are safe */}
         {hints.map((hint, idx) => (
@@ -213,7 +213,7 @@ export function AiHintsStreaming({
             <textarea
               className="form-control mb-2"
               rows={2}
-              placeholder="Optionally describe what you need help with..."
+              placeholder="What's confusing you most right now?"
               value={studentPrompt}
               disabled={isStreaming}
               onChange={(e) => setStudentPrompt(e.target.value)}
