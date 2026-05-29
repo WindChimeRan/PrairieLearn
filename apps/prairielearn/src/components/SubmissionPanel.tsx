@@ -189,7 +189,7 @@ export function SubmissionPanel({
             </div>
           `
         : ''}
-      ${isLatestSubmission && aiHintsCsrfToken && submission.score != null && submission.score < 1
+      ${isLatestSubmission && aiHintsCsrfToken && submission.score != null
         ? hydrateHtml(
             <AiHintsStreaming
               submissionId={submission.id}
