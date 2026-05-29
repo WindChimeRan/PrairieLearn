@@ -47,7 +47,7 @@ export async function generateAiFeedback({
   const anthropic = createAnthropic({
     apiKey: config.aiGradingAnthropicApiKey,
   });
-  const model = anthropic('claude-opus-4-6');
+  const model = anthropic('claude-opus-4-8');
 
   const prompt = mustache.render(promptTemplate, {
     questions: [
