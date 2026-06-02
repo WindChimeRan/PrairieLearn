@@ -18,6 +18,7 @@ import { getQuestionCourse } from '../../lib/question-variant.js';
 import * as questionServers from '../../question-servers/index.js';
 import { streamAiFeedback } from '../lib/ai-grading/ai-feedback-stream.js';
 import { stripHtmlForAiGrading } from '../lib/ai-grading/ai-grading-render.js';
+import { shouldGenerateHintForScore } from '../lib/ai-grading/ai-hints.js';
 
 const sql = loadSqlEquiv(import.meta.url);
 
@@ -56,9 +57,7 @@ interface HistoryContext {
   conversationHistory: ConversationTurn[];
 }
 
-function normalizeStoredHints(
-  raw: unknown,
-): { text: string; student_prompt: string | null }[] {
+function normalizeStoredHints(raw: unknown): { text: string; student_prompt: string | null }[] {
   if (!raw) return [];
   if (Array.isArray(raw)) {
     const result: { text: string; student_prompt: string | null }[] = [];
@@ -162,8 +161,7 @@ router.post(
       throw new HttpStatusError(404, 'Submission not found');
     }
 
-    // Only generate hints for incorrect answers
-    if (row.score != null && row.score >= 1) {
+    if (!shouldGenerateHintForScore(row.score)) {
       res.json({ ai_hints: null });
       return;
     }

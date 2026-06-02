@@ -169,3 +169,27 @@ When changing element properties or options, you MUST update the corresponding d
 
 - For Python tests, use `uv run pytest path/to/testfile.py` from the root directory.
 - To run all Python tests, use `make test-python` from the root directory.
+
+## Local development on this fork (native macOS, no Docker)
+
+This fork runs natively on macOS and works on **Node 20.20.0** even though `package.json` engines says `>=24` (the constraint is not enforced). Beyond [`docs/dev-guide/installingNative.md`](docs/dev-guide/installingNative.md):
+
+- The `make start-support` scripts (`scripts/start_postgres.sh`, etc.) are written for the in-container environment. On a native Mac, run the support services directly: `brew services start postgresql@17` and `brew services start redis`. The test harness connects as `postgres://postgres@localhost/postgres`, so create that role once with `createuser -s postgres`.
+- **`pgvector` is required even for unit tests** — Vitest's global setup runs all migrations into a template DB, including `CREATE EXTENSION vector`. Install `pgvector` and `graphviz` (the latter for `pygraphviz`) via Homebrew.
+- `make python-deps` needs **uv >= 0.9**. If an older `uv` is earlier on your `PATH` (e.g. from anaconda), force Homebrew's: `PATH="/opt/homebrew/bin:$PATH" make python-deps`. The Python code caller requires `.venv/bin/python3.13`.
+
+## AI hints (Genie) feature & tests
+
+The student-facing AI hint ("Genie") is `apps/prairielearn/src/components/AiHintsStreaming.tsx`, gated in `SubmissionPanel.tsx`, and served by `apps/prairielearn/src/ee/routers/ai-hints-stream.ts` (which streams from `ee/lib/ai-grading/ai-feedback-stream.ts`). Whether a graded submission is eligible for a hint is decided by `shouldGenerateHintForScore` in `ee/lib/ai-grading/ai-hints.ts` — eligible whenever `score != null`, matching the UI gate, so fully-correct submissions get hints too.
+
+Tests:
+
+- Unit: `apps/prairielearn/src/ee/tests/aiHints/ai-hints.test.ts` — `yarn test apps/prairielearn/src/ee/tests/aiHints/ai-hints.test.ts`.
+- End-to-end (live LLM): `apps/prairielearn/src/tests/e2e/aiHints/genie.spec.ts` drives the real `tracing_questions` course (Q4 "Function Tracing") through answer → grade → ask the Genie, and asserts the hint is real, not the raw `{"ai_hints":null}` payload. It calls the live Anthropic API and **self-skips** unless `AI_GRADING_ANTHROPIC_API_KEY` is set and the course exists on disk. Run with:
+
+  ```sh
+  source ./claude_api_export.sh # exports AI_GRADING_ANTHROPIC_API_KEY (gitignored)
+  yarn workspace @prairielearn/prairielearn test:e2e src/tests/e2e/aiHints/genie.spec.ts
+  ```
+
+  Override the course location with the `TRACING_COURSE_PATH` env var. The fixture (`src/tests/e2e/aiHints/fixtures.ts`) serves the course via `setupWorkerServer`'s `courseDirs` + `configOverrides` (enabling the `ai-grading` feature and injecting the key).
