@@ -6,6 +6,9 @@
 ## Custom scripts
 /start-custom.sh
 
+## Local secrets (AI grading / hints API key export)
+/claude_api_export.sh
+
 ## s3rver S3 emulation data directory
 /s3rver
 

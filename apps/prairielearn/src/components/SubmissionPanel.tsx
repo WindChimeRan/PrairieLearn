@@ -4,6 +4,7 @@ import { differenceInMilliseconds } from 'date-fns';
 import { z } from 'zod';
 
 import { type HtmlValue, html, unsafeHtml } from '@prairielearn/html';
+import { hydrateHtml } from '@prairielearn/react/server';
 
 import {
   type AssessmentQuestion,
@@ -22,6 +23,7 @@ import type {
 import { gradingJobStatus } from '../models/grading-job.js';
 
 import { AiGradingHtmlPreview } from './AiGradingHtmlPreview.js';
+import { AiHintsStreaming } from './AiHintsStreaming.js';
 import { Modal } from './Modal.js';
 import type { QuestionContext, QuestionRenderContext } from './QuestionContainer.types.js';
 
@@ -65,6 +67,9 @@ export function SubmissionPanel({
   urlPrefix,
   expanded,
   renderSubmissionSearchParams,
+  aiHintsCsrfToken,
+  aiHintsUsed,
+  allAiHints,
 }: {
   questionContext: QuestionContext;
   questionRenderContext?: QuestionRenderContext;
@@ -80,6 +85,9 @@ export function SubmissionPanel({
   urlPrefix: string;
   expanded?: boolean;
   renderSubmissionSearchParams?: URLSearchParams;
+  aiHintsCsrfToken?: string;
+  aiHintsUsed?: number;
+  allAiHints?: unknown[];
 }) {
   const isLatestSubmission = submission.submission_number === submissionCount;
   expanded = expanded || isLatestSubmission;
@@ -180,6 +188,18 @@ export function SubmissionPanel({
               </div>
             </div>
           `
+        : ''}
+      ${isLatestSubmission && aiHintsCsrfToken && submission.score != null
+        ? hydrateHtml(
+            <AiHintsStreaming
+              submissionId={submission.id}
+              urlPrefix={urlPrefix}
+              instanceQuestionId={instance_question?.id ?? ''}
+              existingHintsJson={JSON.stringify(allAiHints ?? submission.feedback?.ai_hints ?? [])}
+              hintsUsed={aiHintsUsed ?? 0}
+              csrfToken={aiHintsCsrfToken}
+            />,
+          )
         : ''}
 
       <div class="card mb-4" data-testid="submission-block">

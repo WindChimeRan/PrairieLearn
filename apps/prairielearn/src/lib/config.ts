@@ -491,6 +491,8 @@ export const ConfigSchema = z.object({
    */
   courseRequestAutoApprovalEnabled: z.boolean().default(false),
   devMode: z.boolean().default(DEV_MODE),
+  /** When false, dev mode will not auto-login users; they must use the login page. */
+  devModeAutoLogin: z.boolean().default(true),
   /** The client ID of your app in AAD; required. */
   azureClientID: z.string().default('<your_client_id>'),
   /** The reply URL registered in AAD for your app. */

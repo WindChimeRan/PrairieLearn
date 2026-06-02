@@ -464,6 +464,9 @@ export async function gradeVariant({
     if (assessment_instance_id != null) {
       await ltiOutcomes.updateScore(assessment_instance_id);
     }
+
+    // AI feedback is now generated client-side via the streaming endpoint
+    // in ee/routers/ai-hints-stream.ts, so we no longer fire-and-forget here.
   }
 }
 

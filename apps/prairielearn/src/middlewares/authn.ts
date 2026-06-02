@@ -93,7 +93,12 @@ export default asyncHandler(async (req, res, next) => {
   // - Use the "bypass" authentication option on the login page to log in as
   //   the user configured by `config.authUid` etc (see `pages/authLoginDev`).
   // - Log in as a specific UID/name/UIN (see `pages/authLogin`).
-  if (config.devMode && !req.cookies.pl2_disable_auto_authn && req.session.user_id == null) {
+  if (
+    config.devMode &&
+    config.devModeAutoLogin &&
+    !req.cookies.pl2_disable_auto_authn &&
+    req.session.user_id == null
+  ) {
     let uid = config.authUid;
     let name = config.authName;
     let uin = config.authUin;

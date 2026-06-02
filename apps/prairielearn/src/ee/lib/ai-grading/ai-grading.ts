@@ -382,6 +382,11 @@ export async function aiGrade({
         // examples here: https://platform.openai.com/docs/guides/structured-outputs
         const RubricGradingResultSchema = z.object({
           explanation: z.string().describe(explanationDescription),
+          feedback: z
+            .string()
+            .describe(
+              'Student-facing feedback on their submission. Address the student as "you". Use an empty string if the student\'s response is entirely correct.',
+            ),
           // rubric_items must be the last property in the schema.
           // Google Gemini models may output malformed JSON. correctGeminiMalformedRubricGradingJson,
           // the function that attempts to repair the JSON, depends on rubric_items being at the end of
@@ -545,9 +550,8 @@ export async function aiGrade({
               submission.id,
               null, // check_modified_at
               {
-                // TODO: consider asking for and recording freeform feedback.
                 manual_rubric_data,
-                feedback: { manual: '' },
+                feedback: { manual: finalGradingResponse.object.feedback },
               },
               user_id,
               true, // is_ai_graded

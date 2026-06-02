@@ -1458,6 +1458,11 @@ export async function initExpress(): Promise<Express> {
   );
 
   app.use(
+    '/pl/course_instance/:course_instance_id(\\d+)/instance_question/:instance_question_id(\\d+)/ai_hints',
+    (await import('./ee/routers/ai-hints-stream.js')).default,
+  );
+
+  app.use(
     '/pl/course_instance/:course_instance_id(\\d+)/instance_question/:instance_question_id(\\d+)',
     (await import('./pages/studentInstanceQuestion/studentInstanceQuestion.js')).default,
   );
@@ -2124,13 +2129,15 @@ export async function stopServer() {
 
 export async function insertDevUser() {
   // add dev user as Administrator
+  const uid = config.authUid ?? 'dev@example.com';
+  const name = config.authName ?? 'Dev User';
   const sql =
     'INSERT INTO users (uid, name)' +
-    " VALUES ('dev@example.com', 'Dev User')" +
+    ' VALUES ($uid, $name)' +
     ' ON CONFLICT (uid) DO UPDATE' +
     ' SET name = EXCLUDED.name' +
     ' RETURNING id;';
-  const user_id = await sqldb.queryRow(sql, UserSchema.shape.id);
+  const user_id = await sqldb.queryRow(sql, { uid, name }, UserSchema.shape.id);
   const adminSql =
     'INSERT INTO administrators (user_id)' +
     ' VALUES ($user_id)' +
