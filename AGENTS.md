@@ -185,7 +185,7 @@ The student-facing AI hint ("Genie") is `apps/prairielearn/src/components/AiHint
 Tests:
 
 - Unit: `apps/prairielearn/src/ee/tests/aiHints/ai-hints.test.ts` — `yarn test apps/prairielearn/src/ee/tests/aiHints/ai-hints.test.ts`.
-- End-to-end (live LLM): `apps/prairielearn/src/tests/e2e/aiHints/genie.spec.ts` drives the real `tracing_questions` course (Q4 "Function Tracing") through answer → grade → ask the Genie, and asserts the hint is real, not the raw `{"ai_hints":null}` payload. It calls the live Anthropic API and **self-skips** unless `AI_GRADING_ANTHROPIC_API_KEY` is set and the course exists on disk. Run with:
+- End-to-end (live LLM): `apps/prairielearn/src/tests/e2e/aiHints/genie.spec.ts` drives the real `tracing_questions` course (Q4 "Function Tracing") through answer → grade → ask the Genie. It covers three cases: (1) a fully-correct submission still returns a real hint, not the raw `{"ai_hints":null}` payload; (2) an incorrect submission also returns a real hint; (3) up to 3 hints are allowed and the 4th is blocked (the `3/3 hints used` badge shows and the "Get AI hint" control disappears). Each test opens a fresh assessment instance — starting one, or regenerating to reset hint state, since the assessment is `multipleInstance: false`. It calls the live Anthropic API and **self-skips** unless `AI_GRADING_ANTHROPIC_API_KEY` is set and the course exists on disk. Run with:
 
   ```sh
   source ./claude_api_export.sh # exports AI_GRADING_ANTHROPIC_API_KEY (gitignored)
